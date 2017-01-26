@@ -76,8 +76,38 @@ module ActiveMerchant #:nodoc:
         end
       end
 
-      def store(payment_method, options = {})
-        verify(payment_method, options)
+      def store_payment_method(payment_obj, customer_id, billing_address = "", options = {})
+         post = {}
+
+         add_payment_method(post, payment_obj)
+         #add_billing_address(post, billing_address)
+         add_customer_reference(post, customer_id)
+
+         JSON.parse(ssl_invoke("vault", post, :post))
+      end
+
+      def delete_vault(gateway_customer_id, vault_id)
+        resp = ssl_invoke("vault", { gateway_customer_id: gateway_customer_id, vault_id: vault_id }, :delete)
+      end
+
+      def find_vault_objects(gateway_customer_id)
+        JSON.parse(ssl_invoke("vault", { gateway_customer_id: gateway_customer_id }, :get))
+      end
+
+      def store_customer(customer)
+         post = {}
+
+         post[:firstName] = customer.firstname,
+         post[:lastName] = customer.lastname,
+         post[:email] = customer.email,
+         post[:custom1] = customer.pid,
+
+         gateway_response = ssl_invoke("customer", post, :post)
+         JSON.parse(gateway_response)
+      end
+
+      def find_customer(gateway_customer_id)
+        JSON.parse(ssl_invoke("customer", { gateway_customer_id: gateway_customer_id }, :get))
       end
 
       def supports_scrubbing?
@@ -92,16 +122,26 @@ module ActiveMerchant #:nodoc:
           gsub(%r((cardCvv=)\d+), '\1[FILTERED]')
       end
 
-      private
+      #private
 
       def add_invoice(post, money, options)
         post[:amountBase] = amount(money) if money
         post[:invoiceNumber] = options[:order_id] if options[:order_id]
       end
 
+      def add_customer_reference(post, customer_id)
+        post[:customerId] = customer_id
+      end
+
       def add_payment_method(post, payment_method)
         if payment_method.is_a? Integer
-          post[:transactionId] = payment_method
+          #post[:transactionId] = payment_method
+          post[:vaultId] = payment_method
+        elsif payment_method.is_a? ActiveMerchant::Billing::Check
+          post[:achRoutingNumber] = payment_method.routing_number
+          post[:achAccountNumber] = payment_method.account_number
+          post[:achAccountType] = payment_method.account_type
+          post[:achType] = "PPD"
         else
           post[:cardNumber] = payment_method.number
           post[:cardExpMonth] = format(payment_method.month, :two_digits)
@@ -128,9 +168,23 @@ module ActiveMerchant #:nodoc:
         )
       end
 
-      def ssl_invoke(action, params)
+      def ssl_invoke(action, params, method = nil)
         if ["purchase", "authorize", "refund", "credit"].include?(action)
           ssl_post(url(), post_data(params), headers)
+        elsif ["customer"].include?(action) && [:get, :post].include?(method)
+          if method == :post
+            ssl_request(method, customer_url, post_data(params), headers)
+          else
+            ssl_get(customer_url(params[:gateway_customer_id]), headers)
+          end
+        elsif ["vault"].include?(action)
+          if method.to_sym == :post
+            ssl_post(vault_url(params[:customerId]), post_data(params), headers)
+          elsif method.to_sym == :delete
+            ssl_request(:delete, vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), nil, headers)
+          else
+            ssl_get(vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), headers)
+          end
         else
           ssl_request(:put, url(params), post_data(params), headers)
         end
@@ -147,6 +201,16 @@ module ActiveMerchant #:nodoc:
 
       def post_data(params)
         params.map {|k, v| "#{k}=#{CGI.escape(v.to_s)}"}.join('&')
+      end
+
+      def customer_url(gateway_customer_id = nil)
+        url = test? ? "#{test_url.gsub('transactions','customers')}" : "#{live_url.gsub('transactions','customers')}"
+        gateway_customer_id.blank? ? url : "#{url}/#{gateway_customer_id}"
+      end
+
+      def vault_url(gateway_customer_id, vault_id = nil)
+        url = test? ? test_url.gsub('transactions', ('customers/' + gateway_customer_id.to_s + '/vaults/')) : live_url.gsub('transactions', ('customers/' + gateway_customer_id.to_s + '/vaults'))
+        vault_id.nil? ? url : "#{url}#{vault_id}"
       end
 
       def url(params={})
