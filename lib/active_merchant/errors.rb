@@ -15,15 +15,15 @@ module ActiveMerchant #:nodoc:
   end
 
   class ResponseError < ActiveMerchantError # :nodoc:
-    attr_reader :response
+    attr_reader :response, :message
 
     def initialize(response, message = nil)
       @response = response
-      @message  = message
+      @message  = JSON.parse(response.body)["errors"].first["message"]
     end
 
     def to_s
-      "Failed with #{response.code} #{response.message if response.respond_to?(:message)}"
+      "#{message if !message.empty?}"
     end
   end
 
