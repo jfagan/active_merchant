@@ -107,7 +107,11 @@ module ActiveMerchant #:nodoc:
       end
 
       def find_customer(gateway_customer_id)
-        JSON.parse(ssl_invoke("customer", { gateway_customer_id: gateway_customer_id }, :get))
+        begin
+          JSON.parse(ssl_invoke("customer", { gateway_customer_id: gateway_customer_id }, :get))
+        rescue => e
+          return nil
+        end
       end
 
       def supports_scrubbing?
