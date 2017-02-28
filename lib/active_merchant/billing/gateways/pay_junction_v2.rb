@@ -22,6 +22,9 @@ module ActiveMerchant #:nodoc:
         add_invoice(post, amount, options)
         add_payment_method(post, payment_method)
 
+        #Always run this check
+        post[:avs] = "ADDRESS_AND_ZIP"
+
         commit("purchase", post)
       end
 
@@ -76,14 +79,21 @@ module ActiveMerchant #:nodoc:
         end
       end
 
-      def store_payment_method(payment_obj, customer_id, billing_address = "", options = {})
+      def store_payment_method(payment_obj, customer_id, billing_address = nil, options = {})
          post = {}
 
-         add_payment_method(post, payment_obj)
-         #add_billing_address(post, billing_address)
+         add_payment_method(post, payment_obj, billing_address)
          add_customer_reference(post, customer_id)
 
          JSON.parse(ssl_invoke("vault", post, :post))
+      end
+
+      def find_billing_address(gateway_customer_id)
+        begin
+          JSON.parse(ssl_invoke("address", { gateway_customer_id: gateway_customer_id }, :get))
+        rescue => e
+          return nil
+        end
       end
 
       def delete_vault(gateway_customer_id, vault_id)
@@ -137,7 +147,7 @@ module ActiveMerchant #:nodoc:
         post[:customerId] = customer_id
       end
 
-      def add_payment_method(post, payment_method)
+      def add_payment_method(post, payment_method, billing_address = nil)
         if payment_method.is_a? Integer
           #post[:transactionId] = payment_method
           post[:vaultId] = payment_method
@@ -151,6 +161,14 @@ module ActiveMerchant #:nodoc:
           post[:cardExpMonth] = format(payment_method.month, :two_digits)
           post[:cardExpYear] = format(payment_method.year, :four_digits)
           post[:cardCvv] = payment_method.verification_value
+        end
+
+        if !billing_address.nil?
+          post[:address] = billing_address[:address]
+          post[:city] = billing_address[:city]
+          post[:state] = billing_address[:state]
+          post[:zip] = billing_address[:zip]
+          post[:country] = billing_address[:country]
         end
       end
 
