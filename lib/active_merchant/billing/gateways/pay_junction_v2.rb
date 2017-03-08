@@ -12,8 +12,11 @@ module ActiveMerchant #:nodoc:
       self.money_format = :dollars
       self.supported_cardtypes = [:visa, :master, :american_express, :discover]
 
+      attr_accessor :request_logger
+
       def initialize(options={})
         requires!(options, :api_login, :api_password, :api_key)
+        self.request_logger = options[:request_logger] if options.has_key?(:request_logger)
         super
       end
 
@@ -190,24 +193,32 @@ module ActiveMerchant #:nodoc:
         )
       end
 
+      #TODO Refactor this mess of code ASAP
       def ssl_invoke(action, params, method = nil)
         if ["purchase", "authorize", "refund", "credit"].include?(action)
+          log_request({endpoint: url(), headers: headers, action_type: action})
           ssl_post(url(), post_data(params), headers)
         elsif ["customer"].include?(action) && [:get, :post].include?(method)
           if method == :post
+            log_request({endpoint: customer_url, headers: headers, action_type: action})
             ssl_request(method, customer_url, post_data(params), headers)
           else
+            log_request({endpoint: customer_url(params[:gateway_customer_id]), headers: headers, action_type: action})
             ssl_get(customer_url(params[:gateway_customer_id]), headers)
           end
         elsif ["vault"].include?(action)
           if method.to_sym == :post
+            log_request({endpoint: vault_url(params[:customerId]), headers: headers, action_type: action})
             ssl_post(vault_url(params[:customerId]), post_data(params), headers)
           elsif method.to_sym == :delete
+            log_request({endpoint: vault_url(params[:gateway_customer_id]), headers: headers, action_type: action})
             ssl_request(:delete, vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), nil, headers)
           else
+            log_request({endpoint: vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), headers: headers, action_type: action})
             ssl_get(vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), headers)
           end
         else
+          log_request({endpoint: url(params), headers: headers, action_type: action})
           ssl_request(:put, url(params), post_data(params), headers)
         end
       end
@@ -270,6 +281,11 @@ module ActiveMerchant #:nodoc:
 
       def error_from(response)
         response["response"]["code"] if response["response"]
+      end
+
+      def log_request(params = {})
+        return if !defined?(@request_logger) || !@request_logger.respond_to?(:log!)
+        @request_logger.log!({endpoint: params[:endpoint], headers: params[:headers], action_type: params[:action_type]})
       end
     end
   end
