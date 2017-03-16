@@ -4,8 +4,8 @@ module ActiveMerchant #:nodoc:
       self.display_name = "PayJunction"
       self.homepage_url = "https://www.payjunction.com/"
 
-      self.test_url = "https://api.payjunctionlabs.com/transactions"
-      self.live_url = "https://api.payjunction.com/transactions"
+      #self.test_url = "https://api.payjunctionlabs.com/transactions"
+      #self.live_url = "https://api.payjunction.com/transactions"
 
       self.supported_countries = ["US"]
       self.default_currency = "USD"
@@ -237,17 +237,17 @@ module ActiveMerchant #:nodoc:
       end
 
       def customer_url(gateway_customer_id = nil)
-        url = test? ? "#{test_url.gsub('transactions','customers')}" : "#{live_url.gsub('transactions','customers')}"
-        gateway_customer_id.blank? ? url : "#{url}/#{gateway_customer_id}"
+        local_url = "#{url.gsub('transactions','customers')}"
+        gateway_customer_id.blank? ? local_url : "#{local_url}/#{gateway_customer_id}"
       end
 
       def vault_url(gateway_customer_id, vault_id = nil)
-        url = test? ? test_url.gsub('transactions', ('customers/' + gateway_customer_id.to_s + '/vaults/')) : live_url.gsub('transactions', ('customers/' + gateway_customer_id.to_s + '/vaults'))
-        vault_id.nil? ? url : "#{url}#{vault_id}"
+        local_url = url.gsub('transactions', ('customers/' + gateway_customer_id.to_s + '/vaults/'))
+        vault_id.nil? ? local_url : "#{local_url}#{vault_id}"
       end
 
       def url(params={})
-        test? ? "#{test_url}/#{params[:transactionId]}" : "#{live_url}/#{params[:transactionId]}"
+        params.has_key?(:transactionId) ? "#{ENV['PAYMENT_GATEWAY_URL']}/#{params[:transactionId]}" : "#{ENV['PAYMENT_GATEWAY_URL']}"
       end
 
       def parse(body)
