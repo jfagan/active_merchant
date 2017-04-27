@@ -85,10 +85,19 @@ module ActiveMerchant #:nodoc:
       def store_payment_method(payment_obj, customer_id, billing_address = nil, options = {})
          post = {}
 
+         add_payment_method(post, payment_obj, billing_address, options)
+         add_customer_reference(post, customer_id)
+
+         JSON.parse(ssl_invoke("vault", post, :post, options))
+      end
+
+      def update_payment_method(payment_obj, customer_id, billing_address = nil, options = {})
+         post = {}
+
          add_payment_method(post, payment_obj, billing_address)
          add_customer_reference(post, customer_id)
 
-         JSON.parse(ssl_invoke("vault", post, :post))
+         JSON.parse(ssl_invoke("vault", post, :put, options))
       end
 
       def find_billing_address(gateway_customer_id)
@@ -105,6 +114,10 @@ module ActiveMerchant #:nodoc:
 
       def find_vault_objects(gateway_customer_id)
         JSON.parse(ssl_invoke("vault", { gateway_customer_id: gateway_customer_id }, :get))
+      end
+
+      def find_vault_object(gateway_customer_id, vault_id)
+        JSON.parse(ssl_invoke("vault", { gateway_customer_id: gateway_customer_id, vault_id: vault_id }, :get))
       end
 
       def store_customer(customer)
@@ -150,11 +163,10 @@ module ActiveMerchant #:nodoc:
         post[:customerId] = customer_id
       end
 
-      def add_payment_method(post, payment_method, billing_address = nil)
-        if payment_method.is_a? Integer
-          #post[:transactionId] = payment_method
-          post[:vaultId] = payment_method
-        elsif payment_method.is_a? ActiveMerchant::Billing::Check
+      def add_payment_method(post, payment_method, billing_address = nil, options = {})
+        post[:vaultId] = options[:gateway_object_id] if options.has_key?(:gateway_object_id) && !options[:gateway_object_id].empty?
+
+        if payment_method.is_a? ActiveMerchant::Billing::Check
           post[:achRoutingNumber] = payment_method.routing_number
           post[:achAccountNumber] = payment_method.account_number
           post[:achAccountType] = payment_method.account_type
@@ -194,7 +206,7 @@ module ActiveMerchant #:nodoc:
       end
 
       #TODO Refactor this mess of code ASAP
-      def ssl_invoke(action, params, method = nil)
+      def ssl_invoke(action, params, method = nil, options = {})
         if ["purchase", "authorize", "refund", "credit"].include?(action)
           log_request({endpoint: url(), headers: headers, action_type: action})
           ssl_post(url(), post_data(params), headers)
@@ -210,8 +222,11 @@ module ActiveMerchant #:nodoc:
           if method.to_sym == :post
             log_request({endpoint: vault_url(params[:customerId]), headers: headers, action_type: action})
             ssl_post(vault_url(params[:customerId]), post_data(params), headers)
+          elsif method.to_sym == :put
+            log_request({endpoint: vault_url(params[:customerId], options[:gateway_object_id]), headers: headers, action_type: action})
+            ssl_request(:put, vault_url(params[:customerId], options[:gateway_object_id]), post_data(params), headers)
           elsif method.to_sym == :delete
-            log_request({endpoint: vault_url(params[:gateway_customer_id]), headers: headers, action_type: action})
+            log_request({endpoint: vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), headers: headers, action_type: action})
             ssl_request(:delete, vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), nil, headers)
           else
             log_request({endpoint: vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), headers: headers, action_type: action})
