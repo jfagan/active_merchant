@@ -164,9 +164,11 @@ module ActiveMerchant #:nodoc:
       end
 
       def add_payment_method(post, payment_method, billing_address = nil, options = {})
-        post[:vaultId] = options[:gateway_object_id] if options.has_key?(:gateway_object_id) && !options[:gateway_object_id].empty?
-
-        if payment_method.is_a? ActiveMerchant::Billing::Check
+        if payment_method.is_a? Integer
+          post[:vaultId] = payment_method
+        elsif options.has_key?(:gateway_object_id) && !options[:gateway_object_id].empty?
+          post[:vaultId] = options[:gateway_object_id] 
+        elsif payment_method.is_a? ActiveMerchant::Billing::Check
           post[:achRoutingNumber] = payment_method.routing_number
           post[:achAccountNumber] = payment_method.account_number
           post[:achAccountType] = payment_method.account_type
