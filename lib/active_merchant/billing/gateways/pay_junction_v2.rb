@@ -167,12 +167,12 @@ module ActiveMerchant #:nodoc:
         if payment_method.is_a? Integer
           post[:vaultId] = payment_method
         elsif options.has_key?(:gateway_object_id) && !options[:gateway_object_id].empty?
-          post[:vaultId] = options[:gateway_object_id] 
+          post[:vaultId] = options[:gateway_object_id]
         elsif payment_method.is_a? ActiveMerchant::Billing::Check
           post[:achRoutingNumber] = payment_method.routing_number
           post[:achAccountNumber] = payment_method.account_number
-          post[:achAccountType] = payment_method.account_type
-          post[:achType] = "PPD"
+          post[:achAccountType] = payment_method.ach_account_type
+          post[:achType] = payment_method.ach_type
         else
           post[:cardNumber] = payment_method.number
           post[:cardExpMonth] = format(payment_method.month, :two_digits)
