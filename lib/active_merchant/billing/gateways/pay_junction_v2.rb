@@ -177,7 +177,6 @@ module ActiveMerchant #:nodoc:
           post[:cardNumber] = payment_method.number
           post[:cardExpMonth] = format(payment_method.month, :two_digits)
           post[:cardExpYear] = format(payment_method.year, :four_digits)
-          post[:cardCvv] = payment_method.verification_value
         end
 
         if !billing_address.nil?
