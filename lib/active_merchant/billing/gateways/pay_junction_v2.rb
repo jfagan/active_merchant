@@ -123,10 +123,10 @@ module ActiveMerchant #:nodoc:
       def store_customer(customer)
          post = {}
 
-         post[:firstName] = customer.firstname,
-         post[:lastName] = customer.lastname,
-         post[:email] = customer.email,
-         post[:custom1] = customer.pid,
+         post[:firstName] = customer.firstname
+         post[:lastName] = customer.lastname
+         post[:email] = customer.email
+         post[:custom1] = customer.pid
 
          gateway_response = ssl_invoke("customer", post, :post)
          JSON.parse(gateway_response)
