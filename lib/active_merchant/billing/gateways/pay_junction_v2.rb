@@ -209,32 +209,32 @@ module ActiveMerchant #:nodoc:
       #TODO Refactor this mess of code ASAP
       def ssl_invoke(action, params, method = nil, options = {})
         if ["purchase", "authorize", "refund", "credit"].include?(action)
-          log_request({endpoint: url(), headers: headers, action_type: action})
+          log_request({endpoint: url(), headers: headers, action_type: action, method: "POST", params: params})
           ssl_post(url(), post_data(params), headers)
         elsif ["customer"].include?(action) && [:get, :post].include?(method)
           if method == :post
-            log_request({endpoint: customer_url, headers: headers, action_type: action})
+            log_request({endpoint: customer_url, headers: headers, action_type: action, method: "POST", params: params})
             ssl_request(method, customer_url, post_data(params), headers)
           else
-            log_request({endpoint: customer_url(params[:gateway_customer_id]), headers: headers, action_type: action})
+            log_request({endpoint: customer_url(params[:gateway_customer_id]), headers: headers, action_type: action, method: method, params: params})
             ssl_get(customer_url(params[:gateway_customer_id]), headers)
           end
         elsif ["vault"].include?(action)
           if method.to_sym == :post
-            log_request({endpoint: vault_url(params[:customerId]), headers: headers, action_type: action})
+            log_request({endpoint: vault_url(params[:customerId]), headers: headers, action_type: action, method: "POST", params: ""})
             ssl_post(vault_url(params[:customerId]), post_data(params), headers)
           elsif method.to_sym == :put
-            log_request({endpoint: vault_url(params[:customerId], options[:gateway_object_id]), headers: headers, action_type: action})
+            log_request({endpoint: vault_url(params[:customerId], options[:gateway_object_id]), headers: headers, action_type: action, method: "PUT", params: ""})
             ssl_request(:put, vault_url(params[:customerId], options[:gateway_object_id]), post_data(params), headers)
           elsif method.to_sym == :delete
-            log_request({endpoint: vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), headers: headers, action_type: action})
+            log_request({endpoint: vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), headers: headers, action_type: action, method: "DELETE", params: params})
             ssl_request(:delete, vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), nil, headers)
           else
-            log_request({endpoint: vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), headers: headers, action_type: action})
+            log_request({endpoint: vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), headers: headers, action_type: action, method: method, params: params})
             ssl_get(vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), headers)
           end
         else
-          log_request({endpoint: url(params), headers: headers, action_type: action})
+          log_request({endpoint: url(params), headers: headers, action_type: action, method: "PUT", params: params})
           ssl_request(:put, url(params), post_data(params), headers)
         end
       end
@@ -301,7 +301,7 @@ module ActiveMerchant #:nodoc:
 
       def log_request(params = {})
         return if !defined?(@request_logger) || !@request_logger.respond_to?(:log!)
-        @request_logger.log!({endpoint: params[:endpoint], headers: params[:headers], action_type: params[:action_type]})
+        @request_logger.log!({method: params[:method].to_s, params: params[:params], endpoint: params[:endpoint], headers: params[:headers], action_type: params[:action_type]})
       end
     end
   end
