@@ -127,6 +127,8 @@ module ActiveMerchant #:nodoc:
          post[:lastName] = customer.lastname
          post[:email] = customer.email
          post[:custom1] = customer.pid
+         post[:identifier] = '%05i' % customer.client.code
+         post[:companyName] = customer.client.name
 
          gateway_response = ssl_invoke("customer", post, :post)
          JSON.parse(gateway_response)
