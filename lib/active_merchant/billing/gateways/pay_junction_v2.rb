@@ -134,6 +134,21 @@ module ActiveMerchant #:nodoc:
          JSON.parse(gateway_response)
       end
 
+      def update_customer(customer)
+         put = {}
+
+         put[:gateway_customer_id] = customer.gateway_user_id
+         put[:firstName] = customer.firstname
+         put[:lastName] = customer.lastname
+         put[:email] = customer.email
+         put[:custom1] = customer.pid
+         put[:identifier] = '%05i' % customer.client.code.to_i
+         put[:companyName] = customer.client.name
+
+         gateway_response = ssl_invoke("customer", put, :put)
+         JSON.parse(gateway_response)
+      end
+
       def find_customer(gateway_customer_id)
         begin
           JSON.parse(ssl_invoke("customer", { gateway_customer_id: gateway_customer_id }, :get))
@@ -213,10 +228,13 @@ module ActiveMerchant #:nodoc:
         if ["purchase", "authorize", "refund", "credit"].include?(action)
           log_request({endpoint: url(), headers: headers, action_type: action, method: "POST", params: params})
           ssl_post(url(), post_data(params), headers)
-        elsif ["customer"].include?(action) && [:get, :post].include?(method)
+        elsif ["customer"].include?(action) && [:get, :post, :put].include?(method)
           if method == :post
             log_request({endpoint: customer_url, headers: headers, action_type: action, method: "POST", params: params})
             ssl_request(method, customer_url, post_data(params), headers)
+          elsif method == :put
+            log_request({endpoint: customer_url(params[:gateway_customer_id]), headers: headers, action_type: action, method: "PUT", params: params})
+            ssl_request(method, customer_url(params[:gateway_customer_id]), params, headers)
           else
             log_request({endpoint: customer_url(params[:gateway_customer_id]), headers: headers, action_type: action, method: method, params: params})
             ssl_get(customer_url(params[:gateway_customer_id]), headers)
