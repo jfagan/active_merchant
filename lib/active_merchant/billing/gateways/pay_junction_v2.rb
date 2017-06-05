@@ -234,7 +234,7 @@ module ActiveMerchant #:nodoc:
             ssl_request(method, customer_url, post_data(params), headers)
           elsif method == :put
             log_request({endpoint: customer_url(params[:gateway_customer_id]), headers: headers, action_type: action, method: "PUT", params: params})
-            ssl_request(method, customer_url(params[:gateway_customer_id]), params, headers)
+            ssl_request(method, customer_url(params[:gateway_customer_id]), post_data(params), headers)
           else
             log_request({endpoint: customer_url(params[:gateway_customer_id]), headers: headers, action_type: action, method: method, params: params})
             ssl_get(customer_url(params[:gateway_customer_id]), headers)
