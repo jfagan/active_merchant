@@ -20,15 +20,28 @@ module ActiveMerchant #:nodoc:
         super
       end
 
-      def purchase(amount, payment_method, options={})
+      def purchase(amount, payment_method, gateway_customer_id, options={})
         post = {}
         add_invoice(post, amount, options)
         add_payment_method(post, payment_method)
 
         #Always run this check
-        post[:avs] = "ADDRESS_AND_ZIP"
-
+        if perform_avs_check?(payment_method, gateway_customer_id)
+          post[:avs] = "ADDRESS_AND_ZIP"
+        else
+          post[:avs] = "BYPASS"
+        end
         commit("purchase", post)
+      end
+
+      def perform_avs_check?(payment_method, gateway_customer_id)
+        gateway_payment_obj = find_vault_object(gateway_customer_id, payment_method)
+        if gateway_payment_obj.class == Hash
+          if gateway_payment_obj["address"]["country"] != "US"
+            return false
+          end
+        end
+        true
       end
 
       def authorize(amount, payment_method, options={})
