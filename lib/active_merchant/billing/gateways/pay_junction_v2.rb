@@ -36,7 +36,7 @@ module ActiveMerchant #:nodoc:
 
       def perform_avs_check?(payment_method, gateway_customer_id)
         gateway_payment_obj = find_vault_object(gateway_customer_id, payment_method)
-        if gateway_payment_obj.class == Hash
+        if gateway_payment_obj.class == Hash && !gateway_payment_obj.empty? && gateway_payment_obj.has_key?("address") && gateway_payment_obj["address"].has_key?("country")
           if gateway_payment_obj["address"]["country"] != "US"
             return false
           end
