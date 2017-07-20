@@ -221,7 +221,6 @@ module ActiveMerchant #:nodoc:
         )
       end
 
-      #TODO Refactor this mess of code ASAP
       def ssl_invoke(action, params, method = nil, options = {})
         if ["purchase", "authorize", "refund", "credit"].include?(action)
           log_request({endpoint: url(), headers: headers, action_type: action, method: "POST", params: params})
