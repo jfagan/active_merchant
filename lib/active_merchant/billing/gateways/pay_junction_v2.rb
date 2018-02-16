@@ -80,6 +80,14 @@ module ActiveMerchant #:nodoc:
         end
       end
 
+      def transaction(transaction_id, options = {})
+        return nil if transaction_id.to_s.blank?
+
+        get = {}
+        get[:transactionId] = transaction_id
+        ActiveMerchant::Billing::Transaction.new( JSON.parse(ssl_invoke("transaction", get, :get, options)) )
+      end
+
       def store_payment_method(payment_obj, customer_id, billing_address = nil, options = {})
          post = {}
 
@@ -250,6 +258,9 @@ module ActiveMerchant #:nodoc:
             log_request({endpoint: vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), headers: headers, action_type: action, method: method, params: params})
             ssl_get(vault_url(params[:gateway_customer_id], (params[:vault_id] || nil)), headers)
           end
+        elsif ["transaction"].include?(action) && [:get].include?(method)
+          log_request({endpoint: url(params), headers: headers, action_type: action, method: "GET", params: params})
+          ssl_get(url(params), headers)
         else
           log_request({endpoint: url(params), headers: headers, action_type: action, method: "PUT", params: params})
           ssl_request(:put, url(params), post_data(params), headers)
